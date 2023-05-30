@@ -1,0 +1,39 @@
+!pip install wget 
+
+import wget
+wget.download('https://raw.githubusercontent.com/BorisMuzellec/MissingDataOT/master/utils.py')
+#import torch
+import numpy as np
+import pandas as pd
+#from utils import *
+
+import seaborn as sns
+
+!pip install torch  
+!pip install utils 
+import torch 
+
+# User defined function-------
+# MAR is Missing At Random, MNAR - Missing Not At Random-------
+
+def produce_NA(X, p_miss, mecha="MCAR", opt=None, p_obs=None, q=None):
+    to_torch = torch.is_tensor(X) ## output a pytorch tensor, or a numpy array
+    if not to_torch:
+        X = X.astype(np.float32)
+        X = torch.from_numpy(X)
+    
+    if mecha == "MAR":
+        mask = MAR_mask(X, p_miss, p_obs).double()
+    elif mecha == "MNAR" and opt == "logistic":
+        mask = MNAR_mask_logistic(X, p_miss, p_obs).double()
+    elif mecha == "MNAR" and opt == "quantile":
+        mask = MNAR_mask_quantiles(X, p_miss, q, 1-p_obs).double()
+    elif mecha == "MNAR" and opt == "selfmasked":
+        mask = MNAR_self_mask_logistic(X, p_miss).double()
+    else:
+        mask = (torch.rand(X.shape) < p_miss).double()
+    
+    X_nas = X.clone()
+    X_nas[mask.bool()] = np.nan
+    
+    return {'X_init': X.double(), 'X_incomp': X_nas.double(), 'mask': mask}
